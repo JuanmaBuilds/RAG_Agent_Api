@@ -29,8 +29,6 @@ class RAGAgentService:
         self.qa_chain = None
         self.text_splitter = None
         self._initialized = False
-<<<<<<< Updated upstream
-=======
         self.langsmith_client = None
         
         self._setup_langsmith()
@@ -55,7 +53,6 @@ class RAGAgentService:
         except Exception as e:
             logger.warning(f"Failed to initialize LangSmith: {e}")
             self.langsmith_client = None
->>>>>>> Stashed changes
     
     async def initialize(self):
         """Initialize the RAG agent with LangChain components."""
