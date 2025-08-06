@@ -14,15 +14,12 @@ class Settings(BaseSettings):
     # OpenAI Configuration
     openai_api_key: str
     
-<<<<<<< Updated upstream
-=======
     # LangSmith Configuration
     langsmith_api_key: Optional[str] = None
     langsmith_project: str = "rag-agent-api"
     langsmith_endpoint: str = "https://api.smith.langchain.com"
     langsmith_tracing_enabled: bool = True
     
->>>>>>> Stashed changes
     # Application Configuration
     app_host: str = "0.0.0.0"
     app_port: int = 8000

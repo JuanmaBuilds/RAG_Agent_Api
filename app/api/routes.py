@@ -111,13 +111,8 @@ async def add_document(request: DocumentRequest):
 async def reprocess_documents_with_chunking():
     """Re-process existing documents with chunking (experimental)."""
     try:
-        # Initialize RAG agent if needed
         await rag_agent.initialize()
-        
-        # Get existing documents from MongoDB
         collection = rag_agent.vector_store_langchain.collection
-        
-        # Find documents that don't have chunk metadata (original documents)
         original_docs = collection.find({
             "$or": [
                 {"metadata.chunk_index": {"$exists": False}},
@@ -128,12 +123,11 @@ async def reprocess_documents_with_chunking():
         processed_count = 0
         for doc in original_docs:
             try:
-                # Extract content and metadata
+
                 content = doc.get("search_text", doc.get("page_content", ""))
                 metadata = doc.get("metadata", {})
                 
                 if content:
-                    # Re-process with chunking
                     await rag_agent.add_document_to_chain(
                         content=content,
                         metadata=metadata
@@ -172,7 +166,6 @@ async def update_chunking_config(
         if chunk_overlap is not None:
             settings.chunk_overlap = chunk_overlap
         
-        # Re-initialize the RAG agent with new settings
         rag_agent._initialized = False
         await rag_agent.initialize()
         
@@ -217,7 +210,6 @@ async def get_document(document_id: str):
     try:
         await rag_agent.initialize()
         
-        # Use RAG agent's search to find the document
         results = await rag_agent.search_documents(
             query=f"document_id:{document_id}",
             limit=1
@@ -279,7 +271,6 @@ async def search_documents(
     try:
         await rag_agent.initialize()
         
-        # Build filters from query parameters
         filters = {}
         if document_type:
             filters["document_type"] = document_type
@@ -354,7 +345,6 @@ async def test_search_capabilities():
         for query in test_queries:
             logger.info(f"Testing query: '{query}'")
             
-            # Test similarity search
             similarity_results = await rag_agent.search_documents(query, 3)
             
             results[query] = {
