@@ -1,5 +1,6 @@
 import time
 import logging
+import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
@@ -10,6 +11,7 @@ from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langsmith import Client
 
 from ..core.config import settings
 from ..core.database import db_manager
@@ -27,6 +29,38 @@ class RAGAgentService:
         self.qa_chain = None
         self.text_splitter = None
         self._initialized = False
+        self.langsmith_client = None
+        
+        # Setup LangSmith tracing
+        self._setup_langsmith()
+    
+    def _setup_langsmith(self):
+        """Initialize LangSmith tracing if API key is available."""
+        # Check for both langsmith and langchain API keys
+        api_key = settings.langsmith_api_key or settings.langchain_api_key
+        project = settings.langsmith_project or settings.langchain_project
+        endpoint = settings.langsmith_endpoint or settings.langchain_endpoint
+        tracing_enabled = settings.langsmith_tracing or settings.langchain_tracing_enabled
+        
+        if api_key:
+            try:
+                # Set environment variables for LangSmith
+                os.environ["LANGCHAIN_API_KEY"] = api_key
+                os.environ["LANGCHAIN_PROJECT"] = project
+                os.environ["LANGCHAIN_ENDPOINT"] = endpoint
+                os.environ["LANGCHAIN_TRACING_V2"] = str(settings.langchain_tracing_v2).lower()
+                os.environ["LANGCHAIN_TRACING"] = str(tracing_enabled).lower()
+                
+                # Initialize LangSmith client
+                self.langsmith_client = Client()
+                logger.info("LangSmith tracing initialized successfully")
+                
+            except Exception as e:
+                logger.warning(f"Failed to initialize LangSmith: {e}")
+                self.langsmith_client = None
+        else:
+            logger.info("LangSmith API key not provided, tracing disabled")
+            self.langsmith_client = None
     
     async def initialize(self):
         """Initialize the RAG agent with LangChain components."""
