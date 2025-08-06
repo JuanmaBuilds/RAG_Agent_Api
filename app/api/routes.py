@@ -249,8 +249,6 @@ async def get_document(document_id: str):
 async def delete_document(document_id: str):
     """Delete a document from the vector database."""
     try:
-        # Note: Document deletion would need to be implemented in the RAG agent
-        # For now, we'll return a success response
         logger.info(f"Document deletion requested for ID: {document_id}")
         
         return DocumentResponse(

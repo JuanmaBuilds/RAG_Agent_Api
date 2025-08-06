@@ -29,43 +29,37 @@ class RAGAgentService:
         self.qa_chain = None
         self.text_splitter = None
         self._initialized = False
+<<<<<<< Updated upstream
+=======
         self.langsmith_client = None
         
-        # Setup LangSmith tracing
         self._setup_langsmith()
     
     def _setup_langsmith(self):
         """Initialize LangSmith tracing if API key is available."""
-        # Check for both langsmith and langchain API keys
-        api_key = settings.langsmith_api_key or settings.langchain_api_key
-        project = settings.langsmith_project or settings.langchain_project
-        endpoint = settings.langsmith_endpoint or settings.langchain_endpoint
-        tracing_enabled = settings.langsmith_tracing or settings.langchain_tracing_enabled
-        
-        if api_key:
-            try:
-                # Set environment variables for LangSmith
-                os.environ["LANGCHAIN_API_KEY"] = api_key
-                os.environ["LANGCHAIN_PROJECT"] = project
-                os.environ["LANGCHAIN_ENDPOINT"] = endpoint
-                os.environ["LANGCHAIN_TRACING_V2"] = str(settings.langchain_tracing_v2).lower()
-                os.environ["LANGCHAIN_TRACING"] = str(tracing_enabled).lower()
-                
-                # Initialize LangSmith client
-                self.langsmith_client = Client()
-                logger.info("LangSmith tracing initialized successfully")
-                
-            except Exception as e:
-                logger.warning(f"Failed to initialize LangSmith: {e}")
-                self.langsmith_client = None
-        else:
+        if not settings.langsmith_api_key:
             logger.info("LangSmith API key not provided, tracing disabled")
             self.langsmith_client = None
+            return
+        
+        try:
+            
+            os.environ["LANGSMITH_API_KEY"] = settings.langsmith_api_key
+            os.environ["LANGSMITH_PROJECT"] = settings.langsmith_project
+            os.environ["LANGSMITH_ENDPOINT"] = settings.langsmith_endpoint
+            os.environ["LANGSMITH_TRACING"] = str(settings.langsmith_tracing_enabled).lower()
+            
+            self.langsmith_client = Client()
+            logger.info("LangSmith tracing initialized successfully")
+            
+        except Exception as e:
+            logger.warning(f"Failed to initialize LangSmith: {e}")
+            self.langsmith_client = None
+>>>>>>> Stashed changes
     
     async def initialize(self):
         """Initialize the RAG agent with LangChain components."""
         try:
-            # Initialize OpenAI components
             self.llm = ChatOpenAI(
                 api_key=settings.openai_api_key,
                 temperature=0.1,
@@ -77,7 +71,6 @@ class RAGAgentService:
                 model=settings.embedding_model
             )
             
-            # Initialize text splitter for document chunking
             self.text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=settings.chunk_size,
                 chunk_overlap=settings.chunk_overlap,
@@ -85,7 +78,6 @@ class RAGAgentService:
                 length_function=len,
             )
             
-            # Initialize MongoDB Atlas vector store for LangChain
             await db_manager.connect()
             collection = db_manager.get_collection()
             
@@ -97,7 +89,6 @@ class RAGAgentService:
                 embedding_key="embedding"
             )
             
-            # Create domain-specific prompt template for airline information
             prompt_template = """Eres un asistente especializado en información de aerolíneas LATAM. Tu objetivo es proporcionar respuestas precisas y útiles basadas en la información disponible.
 
 Contexto de información:
@@ -116,7 +107,6 @@ Respuesta:"""
                 input_variables=["context", "question"]
             )
             
-            # Create QA chain with improved configuration
             self.qa_chain = RetrievalQA.from_chain_type(
                 llm=self.llm,
                 chain_type="stuff",
@@ -166,7 +156,6 @@ Respuesta:"""
                     }
                 )
                 
-                # Create a new QA chain with the filtered retriever
                 qa_chain_with_filters = RetrievalQA.from_chain_type(
                     llm=self.llm,
                     chain_type="stuff",
@@ -177,7 +166,6 @@ Respuesta:"""
                 
                 result = qa_chain_with_filters({"query": full_question})
             else:
-                # Use standard RAG chain
                 result = self.qa_chain({"query": full_question})
             
             answer = result.get("result", "I couldn't find a relevant answer to your question.")
@@ -199,7 +187,6 @@ Respuesta:"""
                     sources.append(source_info)
                     total_score += doc.metadata.get('score', 0)
                 elif hasattr(doc, 'page_content'):
-                    # Extract a snippet from the content
                     content = doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content
                     sources.append({"content_preview": content})
             
@@ -251,7 +238,6 @@ Respuesta:"""
                 else:
                     langchain_filter["created_at"] = {"$lte": value}
             else:
-                # Generic metadata filter
                 langchain_filter[f"metadata.{key}"] = value
         
         return langchain_filter
@@ -264,21 +250,16 @@ Respuesta:"""
             if not self._initialized:
                 await self.initialize()
             
-            # Create the original document
             original_doc = Document(page_content=content, metadata=metadata or {})
             
-            # Split the document into chunks
             chunks = self.text_splitter.split_documents([original_doc])
             
             logger.info(f"Document split into {len(chunks)} chunks")
             
-            # Add chunk metadata to each chunk and ensure search_text field
             for i, chunk in enumerate(chunks):
-                # Generate a unique document ID for each chunk
                 import uuid
                 chunk_document_id = f"{metadata.get('document_id', 'doc')}_{i}_{uuid.uuid4().hex[:8]}" if metadata else f"chunk_{i}_{uuid.uuid4().hex[:8]}"
                 
-                # Update metadata with chunk info
                 chunk.metadata.update({
                     "document_id": chunk_document_id,
                     "chunk_index": i,
@@ -287,13 +268,10 @@ Respuesta:"""
                     "chunk_size": len(chunk.page_content)
                 })
                 
-                # CRITICAL: Add search_text field that MongoDB Atlas vector search expects
                 chunk.metadata["search_text"] = chunk.page_content
                 
-                # Also add the content to the root level for MongoDB Atlas compatibility
-                chunk.page_content = chunk.page_content  # This ensures the content is preserved
+                chunk.page_content = chunk.page_content
             
-            # Add chunks to LangChain vector store
             if self.vector_store_langchain and chunks:
                 self.vector_store_langchain.add_documents(chunks)
             
@@ -311,7 +289,6 @@ Respuesta:"""
             if not self._initialized:
                 await self.initialize()
             
-            # Create retriever with optional filters
             search_kwargs = {"k": limit}
             if filters:
                 search_kwargs["filter"] = self._build_langchain_filter(filters)
@@ -321,10 +298,8 @@ Respuesta:"""
                 search_kwargs=search_kwargs
             )
             
-            # Get relevant documents
             docs = retriever.get_relevant_documents(query)
             
-            # Convert to expected format
             results = []
             for doc in docs:
                 result = {
@@ -347,7 +322,6 @@ Respuesta:"""
             if not self._initialized:
                 await self.initialize()
             
-            # Get collection statistics
             collection = self.vector_store_langchain.collection
             total_docs = collection.count_documents({})
             doc_types = list(collection.distinct("metadata.document_type"))
@@ -364,6 +338,4 @@ Respuesta:"""
             logger.error(f"Error getting search statistics: {e}")
             return {"error": str(e)}
 
-
-# Global RAG agent service instance
 rag_agent = RAGAgentService() 
